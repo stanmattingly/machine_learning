@@ -14,7 +14,6 @@ class CircleModelV0(nn.Module):
         )
         # We upscale to 10 because the more neurons there are,
         # the more opportunities the computer has to find a pattern
-
         self.layer_2 = nn.Linear(
             in_features=10,
             out_features=10
