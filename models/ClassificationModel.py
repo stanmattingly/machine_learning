@@ -25,9 +25,12 @@ class CircleModelV0(nn.Module):
             in_features=10,
             out_features=1
         )
-
+        
+        # Non-linear activation
         self.relu = nn.ReLU()
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # In-between each linear function, we add non-linear activation to get
+        # closer to the circle trend we see when plotting the raw data
         return self.layer_3(self.relu(self.layer_2(self.relu(self.layer_1(x)))))
