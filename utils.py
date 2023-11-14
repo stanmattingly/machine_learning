@@ -3,12 +3,16 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
+def l1_regularization(model, lambda_):
+    l1_norm = sum(p.abs().sum() for p in model.parameters())
+    return lambda_ * l1_norm
+
 def accuracy_fn(y_true, y_pred):
     correct = torch.eq(y_true, y_pred).sum().item()
     acc = (correct/len(y_pred)) * 100
     return acc
 
-def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_test, activation_fn=None, pred_format_fn=None, should_squeeze=False):
+def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_test, activation_fn=None, pred_format_fn=None, should_squeeze=False, scheduler=None):
     """
     Train a PyTorch model and evaluate it on test data.
 
@@ -33,6 +37,8 @@ def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_t
 
         loss = loss_fn(y_pred, y_train)
 
+        loss += l1_regularization(model, lambda_=1e-3)
+
         if activation_fn:
             y_pred = activation_fn(y_pred)
         if pred_format_fn:
@@ -43,6 +49,7 @@ def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_t
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         # Evaluation phase
         model.eval()  # sets the model to evaluation mode
@@ -53,6 +60,7 @@ def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_t
                 test_pred = test_pred.squeeze()
 
             test_loss = loss_fn(test_pred, y_test)
+            test_loss += l1_regularization(model, lambda_=1e-3)
 
             if activation_fn:
                 test_pred = activation_fn(test_pred)
@@ -63,7 +71,7 @@ def train_model(model, epochs, loss_fn, optimizer, X_train, y_train, X_test, y_t
 
         # (Optional) Print epoch, loss, test loss, etc.
         if epoch % 100 == 0:  # print every 100 epochs, adjust as needed
-            print(f"Epoch: {epoch}, Loss: {loss.item()}, Test Loss: {test_loss.item()}, Accuracy: {acc}, Test Accuracy: {test_acc}")
+            print(f"Epoch: {epoch}, Loss: {loss.item()}, Test Loss: {test_loss.item()}, Accuracy: {acc}, Test Accuracy: {test_acc}, Current LR: {scheduler.get_last_lr()}")
 
 
 def plot_predictions(train_data, train_labels, test_data, test_labels, predictions=None):
