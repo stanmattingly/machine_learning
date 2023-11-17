@@ -31,7 +31,7 @@ test_data = datasets.FashionMNIST(
 BATCH_SIZE = 32
 
 train_dataloader = DataLoader(
-    dataset=test_data,
+    dataset=train_data,
     batch_size=BATCH_SIZE,
     shuffle=True,
 )
@@ -68,7 +68,68 @@ fashion_model = FashionModel(
     output_shape=len(test_data.classes)
 )
 
-optimizer = torch.optim.SGD(params=FashionModel.parameters(), lr=0.01)
+loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(params=fashion_model.parameters(), lr=0.1)
+
+def accuracy_fn(y_true, y_pred):
+    """Calculates accuracy between truth labels and predictions.
+
+    Args:
+        y_true (torch.Tensor): Truth labels for predictions.
+        y_pred (torch.Tensor): Predictions to be compared to predictions.
+
+    Returns:
+        [torch.float]: Accuracy value between y_true and y_pred, e.g. 78.45
+    """
+    correct = torch.eq(y_true, y_pred).sum().item()
+    acc = (correct / len(y_pred)) * 100
+    return acc
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+epochs = 3
+
+for epoch in range(epochs):
+    print(f"Epoch: {epoch}")
+
+    train_loss = 0
+    for batch, (X, y) in enumerate(train_dataloader):
+        fashion_model.train()
+
+        y_pred = fashion_model(X)
+        loss = loss_fn(y_pred, y)
+        train_loss += loss
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if batch % 100 == 0:
+            print(batch, len(X))
+            print(f"Looked at {batch * len(X)}/{len(train_dataloader.dataset)} samples.")
+    
+    train_loss /= len(train_dataloader)
+
+    test_loss, test_acc = 0, 0
+    fashion_model.eval()
+
+    with torch.inference_mode():
+        for X, y in test_dataloader:
+            test_pred = fashion_model(X)
+
+            test_loss += loss_fn(test_pred, y)
+
+            test_acc += accuracy_fn(y, test_pred.argmax(dim=1))
+
+        test_loss /= len(test_dataloader)
+
+        test_acc /= len(test_dataloader)
+
+    print(f"Train loss: {train_loss:.4f} | Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
+
+
+
 
 
 
