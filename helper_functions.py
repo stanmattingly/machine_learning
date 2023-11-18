@@ -292,3 +292,76 @@ def download_data(source: str,
             os.remove(data_path / target_file)
     
     return image_path
+
+
+def eval_model(model, data_loader, loss_fn, accuracy_fn, device="cpu"):
+    loss, acc = 0, 0
+
+    model.eval()
+    with torch.inference_mode():
+        for X, y in data_loader:
+            X = X.to(device)
+            y = y.to(device)
+            y_pred = model(X)
+
+            loss += loss_fn(y_pred, y)
+            acc += accuracy_fn(y, y_pred.argmax(dim=1))
+
+
+        loss /= len(data_loader)
+        acc /= len(data_loader)
+
+    return {
+        "model_name": model.__class__.__name__,
+        "model_loss": loss.item(),
+        "model_acc": acc
+    }
+
+
+def train_step(model, dataloader, loss_fn, optimizer, accuracy_fn=None, device="cpu"):
+    train_loss, train_acc = 0, 0
+    model.train()
+
+    for batch, (X, y) in enumerate(dataloader):
+        X, y = X.to(device), y.to(device)
+
+        y_pred = model(X)
+
+        loss = loss_fn(y_pred, y)
+        train_loss += loss.item()
+
+        optimizer.zero_grad()
+
+        loss.backward()
+
+        optimizer.step()
+
+        y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
+        train_acc += (y_pred_class==y).sum().item()/len(y_pred)
+
+    train_loss /= len(dataloader)
+    train_acc /= len(dataloader)
+
+    print(f"Train Loss: {train_loss:.5f} | Train acc: {train_acc:.2f}")
+
+
+def test_step(model, dataloader, loss_fn, accuracy_fn, device="cpu"):
+    test_loss, test_acc = 0, 0
+    model.eval()
+
+    with torch.inference_mode():
+        for batch, (X, y) in enumerate(dataloader):
+            X, y = X.to(device), y.to(device)
+
+            test_pred = model(X)
+            test_pred_class = torch.argmax(torch.softmax(test_pred, dim=1), dim=1)
+
+            test_loss += loss_fn(test_pred, y)
+            test_acc += (test_pred_class==y).sum().item()/len(test_pred)
+
+        test_loss /= len(dataloader)
+        test_acc /= len(dataloader)
+
+    print(f"Test loss: {test_loss:.5f} | Test acc: {test_acc:.2f}")
+
+
